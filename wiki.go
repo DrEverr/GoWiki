@@ -44,7 +44,7 @@ func getTitle(w http.ResponseWriter, r *http.Request) (string, error) {
 	m := validPath.FindStringSubmatch(r.URL.Path)
 	if m == nil {
 		http.NotFound(w, r)
-		return "", error.New("invalid Page Title")
+		return "", errors.New("invalid Page Title")
 	}
 	return m[2], nil // Title is the second subexpresison
 }
