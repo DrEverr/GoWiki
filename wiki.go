@@ -5,12 +5,14 @@ import (
 	"log"
 	"net/http"
 	"html/template"
+	"regexp"
 )
 
 var templates = template.Must(template.ParseFiles(
 	"./templates/edit.html", 
 	"./templates/view.html",
 ))
+var validPath = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
 
 type Page struct {
 	Title string
@@ -36,6 +38,15 @@ func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func getTitle(w http.ResponseWriter, r *http.Request) (string, error) {
+	m := validPath.FindStringSubmatch(r.URL.Path)
+	if m == nil {
+		http.NotFound(w, r)
+		return "", error.New("invalid Page Title")
+	}
+	return m[2], nil // Title is the second subexpresison
 }
 
 func viewHandler(w http.ResponseWriter, r *http.Request) {
