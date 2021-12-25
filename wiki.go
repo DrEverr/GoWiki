@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"log"
 	"net/http"
@@ -28,13 +27,17 @@ func loadPage(title string) (*Page, error) {
 }
 
 func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
-	t, _ := template.ParseFiles(tmpl + ".html")
+	t, _ := template.ParseFiles("./templates/" + tmpl + ".html")
 	t.Execute(w, p)
 }
 
 func viewHandler(w http.ResponseWriter, r *http.Request) {
 	title := r.URL.Path[len("/view/"):]
-	p, _ := loadPage(title)
+	p, err := loadPage(title)
+	if err != nil {
+		http.Redirect(w, r, "/edit/"+title, http.StatusFound)
+		return
+	}
 	renderTemplate(w, "view", p)
 }
 
@@ -45,7 +48,15 @@ func editHandler(w http.ResponseWriter, r *http.Request) {
 		p = &Page{ Title: title }
 	}
 	renderTemplate(w, "edit", p)
-} 
+}
+
+func savehandler(w http.ResponseWriter, r *http.Request) {
+	title := r.URL.Path[len("/save/"):]
+	body := r.FormValue("body")
+	p := &Page{ Title: title, Body []byte(body) }
+	p.save()
+	http.Redirect(w, r, "/view/"+title, http.StatusFound)
+}
 
 func main() {
 	http.HandleFunc("/view/", viewHandler)
