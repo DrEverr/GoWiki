@@ -1,0 +1,6 @@
+<h1>Lista tematów na Wiki</h1>
+<h2>Stwórz nowy plik /edit/{nazwa wątku}</h2>
+
+{{ range $val := . }}
+	<div>[<a href="/view/{{ $val }}">{{ $val }}</a>]</div><br>
+{{ end }}

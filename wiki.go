@@ -5,15 +5,19 @@ import (
 	"log"
 	"net/http"
 	"html/template"
+	"io/ioutil"
 	"regexp"
 	"errors"
 )
 
 var templates = template.Must(template.ParseFiles(
-	"./templates/edit.html", 
-	"./templates/view.html",
+	"./tmpl/edit.html", 
+	"./tmpl/view.html",
+	"./tmpl/index.html",
 ))
-var validPath = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
+var validPath = regexp.MustCompile(
+	"(?:^/(edit|save|view)/([a-zA-Z0-9]+)$|^/init$)",
+)
 
 type Page struct {
 	Title string
@@ -21,12 +25,12 @@ type Page struct {
 }
 
 func (p *Page) save() error {
-	filename := "./pages/" + p.Title + ".txt"
+	filename := "./data/" + p.Title + ".txt"
 	return os.WriteFile(filename, p.Body, 0600)
 }
 
 func loadPage(title string) (*Page, error) {
-	filename := "./pages/" + title + ".txt"
+	filename := "./data/" + title + ".txt"
 	body, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -54,7 +58,7 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
 	return func(w http.ResponseWriter, r *http.Request) {
 		m := validPath.FindStringSubmatch(r.URL.Path)
 		if m == nil {
-			http.NotFound(w ,r)
+			http.Redirect(w, r, "/", http.StatusFound)
 			return
 		}
 		fn(w, r, m[2])
@@ -89,10 +93,29 @@ func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 	http.Redirect(w, r, "/view/"+title, http.StatusFound)
 }
 
+func mainPageHandler(w http.ResponseWriter, r *http.Request) {
+	files, err := ioutil.ReadDir("./data/")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	var fileNames []string
+	for _, v := range files {
+		fName := v.Name()
+		fileNames = append(fileNames, fName[:len(fName) - len(".txt")])
+	}
+	templates.ExecuteTemplate(w, "index.html", fileNames)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 func main() {
 	http.HandleFunc("/view/", makeHandler(viewHandler))
 	http.HandleFunc("/edit/", makeHandler(editHandler))
 	http.HandleFunc("/save/", makeHandler(saveHandler))
+	http.HandleFunc("/", mainPageHandler)
+	http.HandleFunc("/index", mainPageHandler)
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
